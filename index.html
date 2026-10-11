@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MP3 → WAV 转换器</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --fg:#e6e9ef; --dim:#8b93a3; --accent:#59d18b; --accent2:#4a9eff; --warn:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:14px/1.5 -apple-system,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  }
+  .wrap{max-width:1000px; margin:0 auto; padding:22px 18px 60px}
+  h1{font-size:20px; margin:0 0 4px; letter-spacing:.5px}
+  h1 b{color:var(--accent)}
+  .sub{color:var(--dim); font-size:12.5px; margin:0 0 18px}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px}
+  .card h2{font-size:12px; color:var(--dim); margin:0 0 10px; letter-spacing:1px; font-weight:600}
+
+  .presets{display:flex; flex-wrap:wrap; gap:8px}
+  button{
+    font:inherit; color:var(--fg); background:var(--panel2); border:1px solid var(--line);
+    border-radius:8px; padding:7px 12px; cursor:pointer; transition:.12s;
+  }
+  button:hover{border-color:#3b4252; background:#242a35}
+  button.primary{background:var(--accent); color:#08150e; border-color:var(--accent); font-weight:600}
+  button.primary:hover{background:#6bdfa0}
+  button.blue{background:var(--accent2); color:#04121f; border-color:var(--accent2); font-weight:600}
+  button.ghost{background:transparent}
+  button:disabled{opacity:.4; cursor:not-allowed}
+  button.tiny{padding:3px 9px; font-size:12px; border-radius:6px}
+
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px}
+  label.f{display:block}
+  label.f span{display:block; font-size:12px; color:var(--dim); margin-bottom:4px}
+  select,input[type=text]{
+    width:100%; font:inherit; color:var(--fg); background:var(--panel2);
+    border:1px solid var(--line); border-radius:8px; padding:7px 9px;
+  }
+  .chk{display:flex; align-items:center; gap:8px; margin-top:9px; color:var(--dim)}
+  .chk input{width:16px; height:16px; accent-color:var(--accent)}
+
+  #drop{
+    border:1.5px dashed #39404d; border-radius:12px; padding:30px 18px; text-align:center;
+    color:var(--dim); cursor:pointer; transition:.15s; background:#14171e;
+  }
+  #drop:hover{border-color:#4a5568; color:var(--fg)}
+  #drop.on{border-color:var(--accent); background:#16241d; color:var(--fg)}
+  #drop .big{font-size:15px; color:var(--fg); margin-bottom:6px}
+
+  .bar{display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 4px; align-items:center}
+  .count{color:var(--dim); font-size:12.5px; margin-left:auto}
+
+  ul.list{list-style:none; padding:0; margin:10px 0 0}
+  li.row{
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:10px 12px; margin-bottom:8px; display:flex; gap:12px; align-items:flex-start;
+  }
+  li.row .idx{color:var(--dim); font-size:12px; min-width:22px; padding-top:2px}
+  li.row .body{flex:1; min-width:0}
+  li.row .name{font-weight:600; word-break:break-all}
+  li.row .meta{color:var(--dim); font-size:12px; margin-top:3px; word-break:break-all}
+  li.row .meta b{color:var(--accent); font-weight:600}
+  li.row .acts{display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end}
+  .badge{font-size:11.5px; padding:2px 8px; border-radius:99px; border:1px solid var(--line); color:var(--dim); white-space:nowrap}
+  .badge.work{color:#ffd479; border-color:#5a4a22}
+  .badge.ok{color:var(--accent); border-color:#2b5c41}
+  .badge.err{color:var(--warn); border-color:#5c2b2b}
+  .err-line{color:var(--warn); font-size:12px; margin-top:3px; word-break:break-all}
+  details.help{color:var(--dim); font-size:12.5px}
+  details.help summary{cursor:pointer; color:var(--fg); margin-bottom:8px}
+  details.help code{background:#0b0d11; border:1px solid var(--line); border-radius:5px; padding:1px 5px; color:#cfe3d8; word-break:break-all}
+  details.help ul{padding-left:18px; margin:8px 0}
+  audio{height:30px; vertical-align:middle}
+  .foot{color:var(--dim); font-size:12px; margin-top:22px; text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>MP3 <b>→</b> WAV 转换器</h1>
+  <p class="sub">纯本地转换，文件不上传 · 支持批量 · 打包 ZIP · 预设好 CS:GO 语音要的 22050 单声道</p>
+
+  <div class="card">
+    <h2>预设</h2>
+    <div class="presets">
+      <button data-preset="csgo">CS:GO 麦克风 · 22050 单声道 16bit</button>
+      <button data-preset="local">本地播放 · 44100 单声道 16bit</button>
+      <button data-preset="hifi">高保真 · 48000 立体声 16bit</button>
+      <button data-preset="tiny">极小体积 · 8000 单声道 8bit</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>输出设置</h2>
+    <div class="grid">
+      <label class="f"><span>采样率</span>
+        <select id="sr">
+          <option value="same">保持原样</option>
+          <option value="8000">8000 Hz</option>
+          <option value="11025">11025 Hz</option>
+          <option value="16000">16000 Hz</option>
+          <option value="22050">22050 Hz</option>
+          <option value="24000">24000 Hz</option>
+          <option value="32000">32000 Hz</option>
+          <option value="44100">44100 Hz</option>
+          <option value="48000">48000 Hz</option>
+        </select>
+      </label>
+      <label class="f"><span>声道</span>
+        <select id="ch">
+          <option value="same">保持原样</option>
+          <option value="1">单声道</option>
+          <option value="2">立体声</option>
+        </select>
+      </label>
+      <label class="f"><span>位深</span>
+        <select id="bd">
+          <option value="16">16 bit (推荐)</option>
+          <option value="8">8 bit</option>
+          <option value="32">32 bit 浮点</option>
+        </select>
+      </label>
+      <label class="f"><span>文件名前缀</span>
+        <input type="text" id="prefix" placeholder="可留空，例如 v_">
+      </label>
+    </div>
+    <label class="chk"><input type="checkbox" id="norm"> 峰值归一化（把音量顶到最大且不削波，麦克风用建议开）</label>
+    <p class="sub" id="summary" style="margin:10px 0 0"></p>
+  </div>
+
+  <div id="drop">
+    <div class="big">把 MP3 / WAV / M4A / OGG / FLAC 拖进来</div>
+    <div>或者点这里选文件（可多选）</div>
+  </div>
+  <input type="file" id="file" multiple accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.oga,.flac,.opus,.webm" hidden>
+
+  <div class="bar">
+    <button class="primary" id="zip">打包成 ZIP 下载</button>
+    <button id="all">逐个下载</button>
+    <button class="ghost" id="clear">清空列表</button>
+    <span class="count" id="count"></span>
+  </div>
+
+  <ul class="list" id="list"></ul>
+
+  <div class="card" style="margin-top:14px">
+    <details class="help">
+      <summary>怎么用 / 放进游戏哪儿（点开）</summary>
+      <ul>
+        <li>转换全在你浏览器里做，文件<b>不会</b>上传到任何服务器，断网也能用。</li>
+        <li>拖进来就开始转，转完每行有「试听」和「下载」。批量走「打包成 ZIP」。</li>
+        <li><b>麦克风模式</b>（全服都能听见）要 22050Hz 单声道 16bit，点第一个预设，
+            转完丢进：<br>
+            <code>D:\Steam\steamapps\common\Counter-Strike Global Offensive\csgo\sound\dj\voice\</code><br>
+            你的脚本还会从 <code>...\Counter-Strike Global Offensive\dj\voice\</code> 读一份，两处同名即可。</li>
+        <li><b>本地模式</b>（只有自己听见）什么格式都能放，点第二个预设更稳：<br>
+            <code>D:\Steam\steamapps\common\Counter-Strike Global Offensive\csgo\sound\dj\</code></li>
+        <li>转完记得在 NL 里按一下 Soundpad 菜单的「重新扫描」，列表才会刷新。</li>
+        <li>采样率/声道/位深只影响音质和体积：22050 单声道 16bit ≈ 每秒 43KB，一分钟约 2.6MB。</li>
+        <li>一次别拖太多超大文件：解码是在内存里做的，几十首十几分钟的歌会吃不少内存。</li>
+      </ul>
+    </details>
+  </div>
+
+  <p class="foot">单文件网页 · 不联网 · 直接双击打开就能用</p>
+</div>
+
+<script>
+// ===================== CORE:START =====================
+// 纯函数部分（WAV 头 / 峰值归一化 / ZIP），不碰 DOM，方便单独测。
+const LE = (() => { const b = new Uint8Array(new Uint16Array([1]).buffer); return b[0] === 1; })();
+
+// 把 AudioBuffer 编成标准 44 字节头的 WAV
+function encodeWav(buf, bitDepth, normalize) {
+  const ch = buf.numberOfChannels, frames = buf.length, rate = buf.sampleRate;
+  const data = [];
+  for (let c = 0; c < ch; c++) data.push(buf.getChannelData(c));
+
+  let gain = 1;
+  if (normalize) {
+    let peak = 0;
+    for (let c = 0; c < ch; c++) {
+      const d = data[c];
+      for (let i = 0; i < d.length; i++) { const a = d[i] < 0 ? -d[i] : d[i]; if (a > peak) peak = a; }
+    }
+    if (peak > 0.0001) gain = Math.min(4, 0.995 / peak);   // 最多提 12dB，免得把底噪吹起来
+  }
+
+  const bps = bitDepth === 8 ? 1 : (bitDepth === 32 ? 4 : 2);
+  const fmtTag = bitDepth === 32 ? 3 : 1;                  // 3 = IEEE float
+  const blockAlign = ch * bps;
+  const dataSize = frames * blockAlign;
+  const out = new ArrayBuffer(44 + dataSize);
+  const v = new DataView(out);
+  const put = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
+
+  put(0, 'RIFF');  v.setUint32(4, 36 + dataSize, true);  put(8, 'WAVE');
+  put(12, 'fmt '); v.setUint32(16, 16, true);            v.setUint16(20, fmtTag, true);
+  v.setUint16(22, ch, true);   v.setUint32(24, rate, true);
+  v.setUint32(28, rate * blockAlign, true);
+  v.setUint16(32, blockAlign, true); v.setUint16(34, bitDepth, true);
+  put(36, 'data'); v.setUint32(40, dataSize, true);
+
+  const u8 = new Uint8Array(out);
+  let k = 44;
+  if (bitDepth === 16 && LE) {
+    const view = new Int16Array(out, 44, frames * ch);
+    let n = 0;
+    for (let i = 0; i < frames; i++) for (let c = 0; c < ch; c++) {
+      let s = data[c][i] * gain; s = s < -1 ? -1 : (s > 1 ? 1 : s);
+      view[n++] = s < 0 ? Math.round(s * 32768) : Math.round(s * 32767);
+    }
+  } else if (bitDepth === 32 && LE) {
+    const view = new Float32Array(out, 44, frames * ch);
+    let n = 0;
+    for (let i = 0; i < frames; i++) for (let c = 0; c < ch; c++) {
+      let s = data[c][i] * gain; view[n++] = s < -1 ? -1 : (s > 1 ? 1 : s);
+    }
+  } else {                                                  // 8bit 与大端兜底
+    for (let i = 0; i < frames; i++) for (let c = 0; c < ch; c++) {
+      let s = data[c][i] * gain; s = s < -1 ? -1 : (s > 1 ? 1 : s);
+      if (bitDepth === 8) u8[k++] = Math.round(s * 127) + 128;
+      else if (bitDepth === 16) { v.setInt16(k, Math.round(s * (s < 0 ? 32768 : 32767)), true); k += 2; }
+      else { v.setFloat32(k, s, true); k += 4; }
+    }
+  }
+  return u8;
+}
+
+let crcTable = null;
+function crc32(u8) {
+  if (!crcTable) {
+    crcTable = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      crcTable[n] = c >>> 0;
+    }
+  }
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < u8.length; i++) c = crcTable[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+// 只打包不压缩（store），文件名走 UTF-8 标志位，中文名不会乱码
+function zip(files, when) {
+  const enc = new TextEncoder();
+  const d = when || new Date();
+  const dosTime = ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1)) & 0xFFFF;
+  const dosDate = (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()) & 0xFFFF;
+  const parts = [], central = [];
+  let offset = 0;
+
+  for (const f of files) {
+    const name = enc.encode(f.name);
+    const crc = crc32(f.data);
+    const size = f.data.length;
+
+    const lh = new Uint8Array(30 + name.length);
+    const lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(6, 0x0800, true);          // UTF-8
+    lv.setUint16(8, 0, true);               // store
+    lv.setUint16(10, dosTime, true);
+    lv.setUint16(12, dosDate, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, size, true);
+    lv.setUint32(22, size, true);
+    lv.setUint16(26, name.length, true);
+    lv.setUint16(28, 0, true);
+    lh.set(name, 30);
+
+    const ce = new Uint8Array(46 + name.length);
+    const cv = new DataView(ce.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint16(12, dosTime, true);
+    cv.setUint16(14, dosDate, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, size, true);
+    cv.setUint32(24, size, true);
+    cv.setUint16(28, name.length, true);
+    cv.setUint16(30, 0, true);
+    cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true);
+    cv.setUint16(36, 0, true);
+    cv.setUint32(38, 0, true);
+    cv.setUint32(42, offset, true);
+    ce.set(name, 46);
+
+    parts.push(lh, f.data);
+    central.push(ce);
+    offset += lh.length + size;
+  }
+
+  const cdSize = central.reduce((a, b) => a + b.length, 0);
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(4, 0, true);
+  ev.setUint16(6, 0, true);
+  ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdSize, true);
+  ev.setUint32(16, offset, true);
+  ev.setUint16(20, 0, true);
+
+  return new Blob([...parts, ...central, eocd], { type: 'application/zip' });
+}
+// ===================== CORE:END =====================
+
+const PRESETS = {
+  csgo:  { sr: '22050', ch: '1', bd: '16', norm: true },
+  local: { sr: '44100', ch: '1', bd: '16', norm: true },
+  hifi:  { sr: '48000', ch: '2', bd: '16', norm: false },
+  tiny:  { sr: '8000',  ch: '1', bd: '8',  norm: true },
+};
+
+const $ = s => document.querySelector(s);
+const el = {
+  sr: $('#sr'), ch: $('#ch'), bd: $('#bd'), prefix: $('#prefix'), norm: $('#norm'),
+  drop: $('#drop'), file: $('#file'), list: $('#list'),
+  zipBtn: $('#zip'), allBtn: $('#all'), clearBtn: $('#clear'),
+  count: $('#count'), summary: $('#summary'),
+};
+
+const KEY = 'mp3wav.cfg.v1';
+const cfg = { sr: '22050', ch: '1', bd: '16', norm: true, prefix: '' };
+try { Object.assign(cfg, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
+function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify({
+      sr: el.sr.value, ch: el.ch.value, bd: el.bd.value,
+      norm: el.norm.checked, prefix: el.prefix.value,
+    }));
+  } catch (e) {}
+}
+
+function applyCfg() {
+  el.sr.value = cfg.sr; el.ch.value = cfg.ch; el.bd.value = cfg.bd;
+  el.norm.checked = !!cfg.norm; el.prefix.value = cfg.prefix || '';
+  updateSummary();
+}
+function updateSummary() {
+  const sr = el.sr.value === 'same' ? '原采样率' : el.sr.value + 'Hz';
+  const ch = el.ch.value === 'same' ? '原声道' : (el.ch.value === '1' ? '单声道' : '立体声');
+  const bd = el.bd.value + 'bit';
+  el.summary.textContent = `当前输出：${sr} · ${ch} · ${bd}` + (el.norm.checked ? ' · 峰值归一化' : '');
+}
+
+const items = [];             // { id, file, status, out, outName, info, err, data }
+let seq = 0, running = false, decodeCtx = null;
+
+function fmtSize(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1048576).toFixed(1) + ' MB';
+}
+function baseName(name) { return name.replace(/\.[^.]+$/, ''); }
+function getCtx() {
+  if (!decodeCtx) {
+    const C = window.AudioContext || window.webkitAudioContext;
+    decodeCtx = new C();
+  }
+  return decodeCtx;
+}
+function decodeFile(ab) {
+  return new Promise((res, rej) => {
+    const ctx = getCtx();
+    let p = null;
+    try { p = ctx.decodeAudioData(ab, res, rej); } catch (e) { rej(e); return; }
+    if (p && typeof p.then === 'function') p.then(res, rej);
+  });
+}
+
+async function convert(it) {
+  it.status = 'work'; it.err = ''; render();
+  const ab = await it.file.arrayBuffer();
+  const dec = await decodeFile(ab);
+
+  const tRate = el.sr.value === 'same' ? dec.sampleRate : parseInt(el.sr.value, 10);
+  const tCh = el.ch.value === 'same' ? Math.max(1, Math.min(2, dec.numberOfChannels)) : parseInt(el.ch.value, 10);
+  const frames = Math.max(1, Math.ceil(dec.duration * tRate));
+  const off = new OfflineAudioContext(tCh, frames, tRate);
+  const src = off.createBufferSource();
+  src.buffer = dec;
+  src.connect(off.destination);
+  src.start();
+  const rendered = await off.startRendering();
+
+  const bd = parseInt(el.bd.value, 10);
+  const wav = encodeWav(rendered, bd, el.norm.checked);
+  const prefix = (el.prefix.value || '').trim();
+  it.data = wav;
+  it.out = new Blob([wav], { type: 'audio/wav' });
+  it.outName = prefix + baseName(it.file.name) + '.wav';
+  it.info = `${it.file.name}  ${fmtSize(it.file.size)}  ${dec.duration.toFixed(2)}s ` +
+            `${dec.sampleRate}Hz ${dec.numberOfChannels}ch` +
+            `  →  ${tRate}Hz ${tCh}ch ${bd}bit  ${fmtSize(wav.length)}`;
+  it.status = 'ok';
+}
+
+async function pump() {
+  if (running) return;
+  running = true;
+  try {
+    for (const it of items) {
+      if (it.status === 'ok' || it.status === 'err') continue;
+      try { await convert(it); }
+      catch (e) {
+        it.status = 'err';
+        it.err = '解码/转换失败：' + ((e && (e.message || e.name)) || e) + '（个别格式浏览器不认，先转成 MP3 再试）';
+      }
+      render();
+      await new Promise(r => setTimeout(r, 0));
+    }
+  } finally { running = false; render(); }
+}
+
+function download(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+let player = null;
+function preview(it) {
+  if (!player) player = new Audio();
+  if (player.src) URL.revokeObjectURL(player.src);
+  player.src = URL.createObjectURL(it.out);
+  player.play();
+}
+
+function addFiles(list) {
+  for (const f of list) {
+    items.push({ id: ++seq, file: f, status: 'wait', out: null, data: null, outName: '', info: '', err: '' });
+  }
+  render();
+  pump();
+}
+
+function render() {
+  el.list.textContent = '';
+  items.forEach((it, i) => {
+    const li = document.createElement('li');
+    li.className = 'row';
+
+    const idx = document.createElement('div');
+    idx.className = 'idx';
+    idx.textContent = (i + 1) + '.';
+
+    const body = document.createElement('div');
+    body.className = 'body';
+    const nm = document.createElement('div');
+    nm.className = 'name';
+    nm.textContent = it.status === 'ok' ? it.outName : it.file.name;
+    const mt = document.createElement('div');
+    mt.className = 'meta';
+    mt.textContent = it.info || (fmtSize(it.file.size) + '  ' + it.file.name);
+    body.appendChild(nm); body.appendChild(mt);
+    if (it.err) {
+      const er = document.createElement('div');
+      er.className = 'err-line';
+      er.textContent = it.err;
+      body.appendChild(er);
+    }
+
+    const acts = document.createElement('div');
+    acts.className = 'acts';
+
+    const badge = document.createElement('span');
+    badge.className = 'badge' + (it.status === 'ok' ? ' ok' : it.status === 'err' ? ' err' : it.status === 'work' ? ' work' : '');
+    badge.textContent = it.status === 'ok' ? '完成' : it.status === 'err' ? '失败' : it.status === 'work' ? '转换中…' : '排队中';
+    acts.appendChild(badge);
+
+    if (it.status === 'ok') {
+      const pb = document.createElement('button');
+      pb.className = 'tiny'; pb.textContent = '试听';
+      pb.onclick = () => preview(it);
+      const db = document.createElement('button');
+      db.className = 'tiny'; db.textContent = '下载';
+      db.onclick = () => download(it.out, it.outName);
+      acts.appendChild(pb); acts.appendChild(db);
+    }
+    if (it.status === 'err') {
+      const rb = document.createElement('button');
+      rb.className = 'tiny'; rb.textContent = '重试';
+      rb.onclick = () => { it.status = 'wait'; it.err = ''; render(); pump(); };
+      acts.appendChild(rb);
+    }
+    const xb = document.createElement('button');
+    xb.className = 'tiny ghost'; xb.textContent = '移除';
+    xb.onclick = () => { const k = items.indexOf(it); if (k >= 0) items.splice(k, 1); render(); };
+    acts.appendChild(xb);
+
+    li.appendChild(idx); li.appendChild(body); li.appendChild(acts);
+    el.list.appendChild(li);
+  });
+
+  const done = items.filter(x => x.status === 'ok').length;
+  el.count.textContent = items.length ? `共 ${items.length} 个，完成 ${done} 个` : '';
+  el.zipBtn.disabled = done === 0;
+  el.allBtn.disabled = done === 0;
+}
+
+// ---- 事件接线 ----
+document.querySelectorAll('[data-preset]').forEach(b => {
+  b.onclick = () => {
+    Object.assign(cfg, PRESETS[b.dataset.preset]);
+    applyCfg(); save();
+    const redo = items.filter(x => x.status === 'ok');
+    if (redo.length) {
+      for (const it of items) { it.status = 'wait'; it.out = null; it.data = null; it.err = ''; }
+      render(); pump();
+    }
+  };
+});
+['sr', 'ch', 'bd'].forEach(id => el[id].onchange = () => { updateSummary(); save(); });
+el.norm.onchange = () => { updateSummary(); save(); };
+el.prefix.oninput = save;
+
+el.drop.onclick = () => el.file.click();
+el.file.onchange = () => { addFiles(el.file.files); el.file.value = ''; };
+['dragenter', 'dragover'].forEach(ev => el.drop.addEventListener(ev, e => {
+  e.preventDefault(); el.drop.classList.add('on');
+}));
+['dragleave', 'drop'].forEach(ev => el.drop.addEventListener(ev, e => {
+  e.preventDefault(); el.drop.classList.remove('on');
+}));
+el.drop.addEventListener('drop', e => {
+  if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+});
+
+el.zipBtn.onclick = () => {
+  const ok = items.filter(x => x.status === 'ok' && x.data);
+  if (!ok.length) return;
+  const files = ok.map(x => ({ name: x.outName, data: x.data }));
+  download(zip(files), 'wav-' + new Date().toISOString().slice(0, 10) + '.zip');
+};
+el.allBtn.onclick = () => {
+  const ok = items.filter(x => x.status === 'ok');
+  ok.forEach((x, i) => setTimeout(() => download(x.out, x.outName), i * 250));
+};
+el.clearBtn.onclick = () => { items.length = 0; render(); };
+
+applyCfg();
+render();
+</script>
+</body>
+</html>
